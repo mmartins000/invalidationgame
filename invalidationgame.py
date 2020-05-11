@@ -621,10 +621,10 @@ def print_summary(num_sims=1):
               (simulations["summary"]["batch_end"] - simulations["summary"]["batch_start"]))
         print("Mean duration of simulations:", simulations["summary"]["sim_mean_time"], "seconds")
         print(f'{"Average of " if int(num_sims) > 1 else ""}2-block difference for', len(block_diff_2),
-              f'{"simulation" if int(num_sims) < 2 else "simulations"}:',
+              f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
               simulations["summary"]["pow"]["2-block-diff-average"])
         print(f'{"Average of " if int(num_sims) > 1 else ""}6-block difference for', len(block_diff_6),
-              f'{"simulation" if int(num_sims) < 2 else "simulations"}:',
+              f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
               simulations["summary"]["pow"]["6-block-diff-average"])
 
     else:
@@ -657,10 +657,10 @@ def print_summary(num_sims=1):
         print("Total time for the batch of simulations:", batch_end_time - batch_start_time)
         print("Average duration of simulations:", simulations["summary"]["sim_mean_time"], "seconds")
         print(f'{"Average of " if int(num_sims) > 1 else ""}2-block difference for', len(block_diff_2),
-              f'{"simulation" if int(num_sims) < 2 else "simulations"}:',
+              f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
               simulations["summary"]["pow"]["2-block-diff-average"], "blocks")
         print(f'{"Average of " if int(num_sims) > 1 else ""}6-block difference for', len(block_diff_6),
-              f'{"simulation" if int(num_sims) < 2 else "simulations"}:',
+              f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
               simulations["summary"]["pow"]["6-block-diff-average"], "blocks")
 
     # Losses amount
