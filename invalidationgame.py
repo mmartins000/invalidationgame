@@ -17,17 +17,17 @@
 # For Assumptions and Caveats, please check README.md file in Github repository.
 
 # Execution example 1: Pure PoW, 1 simulation, save output to file sim_pow.txt:
-# $ python invalidationgame.py -w 50.01 -w 49.99 -i 1 -o sim_pow.txt
+# $ python invalidationgame.py -w 50.01 -w 49.99 -o sim_pow.txt
 
-# Execution example 2: PoW + PoS, 1 simulation, save output to file sim_pow_pos.txt:
-# $ python invalidationgame.py -w 50 -w 50 -s 50 -s 50 -i 1 -o sim_pow_pos.txt
+# Execution example 2: PoW + PoS, 1 simulation, save output to file invalidationgame.json5:
+# $ python invalidationgame.py -w 50 -w 50 -s 50 -s 50
 
 # Execution example 3: PoW + PoS, 3 simulations, adversary A1 trying to rewrite last two blocks,
 # save output to file sim_pow_pos2.txt:
 # $ python invalidationgame.py -w 50 -w 50 -s 50 -s 50 -i 3 --block-rewind 2 -o sim_pow_pos2.txt
 
 # Execution example 4: PoW + PoS, 1 simulation, logging debug level information:
-# $ python invalidationgame.py -w 50 -w 50 -s 50 -s 50 -i 1 --log-level DEBUG
+# $ python invalidationgame.py -w 50 -w 50 -s 50 -s 50 --log-level DEBUG
 
 import argparse
 import random
@@ -48,8 +48,8 @@ adversaries = {}
 block_diff_2 = list()
 block_diff_6 = list()
 sim_duration_times = list()
-batch_start_time = 0
-batch_end_time = 0
+batch_start_time = datetime.datetime.now()
+batch_end_time = datetime.datetime.now()
 
 block_hash_space = 10000             # 10000 (instead of 100) allows for two floating point hashpower number
 pos_avg_ticket_pool_size = 40960
@@ -106,14 +106,14 @@ def restricted_regular_file(file):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", "--version", dest='version', action='store_true', help="Prints version")
-parser.add_argument("-o", "--output", dest='output', help="Saves simulations to output file",
-                    type=restricted_regular_file)
+parser.add_argument("-o", "--output", dest='outputfile', help="Saves simulations to output file",
+                    default='invalidationgame.json5', type=restricted_regular_file)
 parser.add_argument("-w", "--pow", dest='pow', help="Informs adversaries' PoW hashpower",
                     action='append', type=restricted_float)
 parser.add_argument("-s", "--pos", dest='pos', help="Informs adversaries' PoS stake size",
                     action='append', type=restricted_float)
 parser.add_argument("-i", "--simulations", dest='simulations', help="Number of simulations to be run",
-                    type=restricted_int)
+                    default=1, type=restricted_int)
 parser.add_argument("-c", "--config", dest='configfile', help="Configuration file", default='invalidationgame.conf',
                     type=restricted_regular_file)
 parser.add_argument("--verbose", dest='verbose', action='store_true', help="Prints the simulation at the end")
@@ -264,14 +264,14 @@ def setup_block_rewind(s, rewind_blocks, rewind_adv):
     # Generates a number of blocks for the selected adversary before simulation starts
     a = "A" + str(rewind_adv)
     for b in range(int(rewind_blocks)):
-        simulations["sims"][s]["cycles"][b] = {}
+        simulations["sims"][str(s)]["cycles"][str(b)] = {}
         block_hash = "RWB" + str(b)
-        simulations["sims"][s]["cycles"][b]["drawn_block_hash"] = block_hash
-        simulations["sims"][s]["cycles"][b]["pow_winners"] = [a]
+        simulations["sims"][str(s)]["cycles"][str(b)]["drawn_block_hash"] = block_hash
+        simulations["sims"][str(s)]["cycles"][str(b)]["pow_winners"] = [a]
         adversaries[a]["drawn_block_hashes"].append(block_hash)
 
         # Add fake blocks to the "chain" node
-        this_height = len(adversaries[a]["chain"])
+        this_height = str(len(adversaries[a]["chain"]))
         adversaries[a]["chain"][this_height] = {}
         if not args.pos:
             # Pure PoW: Append fake block to the "chain"
@@ -286,8 +286,8 @@ def setup_block_rewind(s, rewind_blocks, rewind_adv):
 
 
 def create_simulation(s):
-    simulations["sims"][s] = {}
-    simulations["sims"][s]["cycles"] = {}
+    simulations["sims"][str(s)] = {}
+    simulations["sims"][str(s)]["cycles"] = {}
 
 
 def mine_block(s, cycle_height):
@@ -301,20 +301,20 @@ def mine_block(s, cycle_height):
         # This choice affects the way block hashes are drawn here
         draw_block_hash = random.choice(range(block_hash_space))
         # The dict is crated here to avoid KeyError when calc_distance() returns 0
-        if cycle_height not in simulations["sims"][s]["cycles"]:
-            simulations["sims"][s]["cycles"][cycle_height] = {}
-        simulations["sims"][s]["cycles"][cycle_height]["drawn_block_hash"] = draw_block_hash
-        simulations["sims"][s]["cycles"][cycle_height]["pow_winners"] = list()
+        if cycle_height not in simulations["sims"][str(s)]["cycles"]:
+            simulations["sims"][str(s)]["cycles"][str(cycle_height)] = {}
+        simulations["sims"][str(s)]["cycles"][str(cycle_height)]["drawn_block_hash"] = draw_block_hash
+        simulations["sims"][str(s)]["cycles"][str(cycle_height)]["pow_winners"] = list()
         logging.info("Cycle height: " + str(cycle_height) + ", drawn block hash: " + str(draw_block_hash))
         for a in adversaries:
             if draw_block_hash in adversaries[a]["prob_block_hashes"]:
                 pow_winner = True
                 adversaries[a]["drawn_block_hashes"].append(str(draw_block_hash))
-                simulations["sims"][s]["cycles"][cycle_height]["pow_winners"].append(a)
+                simulations["sims"][str(s)]["cycles"][str(cycle_height)]["pow_winners"].append(a)
                 logging.info("Cycle height: " + str(cycle_height) + ", PoW winner: " + a)
                 if not args.pos:
                     # pow_winner: Append block to the "chain"
-                    this_height = len(adversaries[a]["chain"])
+                    this_height = str(len(adversaries[a]["chain"]))
                     adversaries[a]["chain"][this_height] = {}
                     adversaries[a]["chain"][this_height].update({"block_hash": draw_block_hash})
 
@@ -325,7 +325,7 @@ def mine_block(s, cycle_height):
         else:   # If already selected at least one adversary as PoW miner; if not, will loop again
             # PoS mining
             if args.pos:  # If not, this simulation is a pure PoW and this code block can be skipped
-                simulations["sims"][s]["cycles"][cycle_height]["pos_winners"] = list()
+                simulations["sims"][str(s)]["cycles"][str(cycle_height)]["pos_winners"] = list()
 
                 # Draws how many tickets will be drawn for this block based on historical proportions
                 # defined in the beginning of this file
@@ -342,10 +342,11 @@ def mine_block(s, cycle_height):
                     adversaries[a]["drawn_tickets"] = [t for t in drawn_tickets if t in adversaries[a]["prob_tickets"]]
                     total_tickets = len(adversaries[a]["drawn_tickets"])
 
-                    if a in simulations["sims"][s]["cycles"][cycle_height]["pow_winners"]:  # adversary already won PoW
+                    if a in simulations["sims"][str(s)]["cycles"][str(cycle_height)]["pow_winners"]:
+                        # adversary already won PoW
                         if total_tickets > pos_allowed_drawn_tickets // 2:
                             pos_winner = True
-                            simulations["sims"][s]["cycles"][cycle_height]["pos_winners"].append(a)
+                            simulations["sims"][str(s)]["cycles"][str(cycle_height)]["pos_winners"].append(a)
                             adversaries[a]["validated_blocks"] += 1
                             logging.debug("Tickets for adversary " + a + ": " +
                                           str(total_tickets) + "; drawn tickets: " +
@@ -353,7 +354,7 @@ def mine_block(s, cycle_height):
                             logging.info("Cycle height: " + str(cycle_height) + ", PoS winner: " + a)
 
                             # pow_winner and pos_winner: Append block to the "chain" after PoS validation
-                            this_height = len(adversaries[a]["chain"])
+                            this_height = str(len(adversaries[a]["chain"]))
                             adversaries[a]["chain"][this_height] = {}
                             adversaries[a]["chain"][this_height].update(
                                 {"block_hash": draw_block_hash,
@@ -405,9 +406,9 @@ def calc_distance(s, cycle_height):
     except ValueError:
         calculated_distance = 0
 
-    if calculated_distance == 2 and simulations["sims"][s]["2-block-diff"] == -1:
+    if calculated_distance == 2 and simulations["sims"][str(s)]["2-block-diff"] == -1:
         # Adding 1 because the cycle height starts in 0 and I want to know after how many cycles
-        simulations["sims"][s]["2-block-diff"] = cycle_height + 1    # first time reached 2-block distance
+        simulations["sims"][str(s)]["2-block-diff"] = cycle_height + 1    # first time reached 2-block distance
 
         # Who reached 2-block diff first and how many blocks were mined
         winner_list = {}
@@ -415,15 +416,15 @@ def calc_distance(s, cycle_height):
             winner_list.update({a: str(adversaries[a]["sum_blocks"])})
         winner = max(winner_list, key=winner_list.get)
 
-        simulations["sims"][s]["2-block-diff_winner"] = winner
-        simulations["sims"][s]["2-block-diff_winner_score"] = winner_list[winner]
+        simulations["sims"][str(s)]["2-block-diff_winner"] = winner
+        simulations["sims"][str(s)]["2-block-diff_winner_score"] = winner_list[winner]
 
         logging.info("2-block-diff updated with cycle height " + str(cycle_height) +
                      " (after " + str(cycle_height + 1) + " cycles)")
 
     elif calculated_distance == 6:
         # Adding 1 because the cycle height starts in 0 and I want to know after how many cycles
-        simulations["sims"][s]["6-block-diff"] = cycle_height + 1    # reached 6-block distance
+        simulations["sims"][str(s)]["6-block-diff"] = cycle_height + 1    # reached 6-block distance
 
         # Who reached 6-block diff and how many blocks were mined
         winner_list = {}
@@ -431,8 +432,8 @@ def calc_distance(s, cycle_height):
             winner_list.update({a: str(adversaries[a]["sum_blocks"])})
         winner = max(winner_list, key=winner_list.get)
 
-        simulations["sims"][s]["6-block-diff_winner"] = winner
-        simulations["sims"][s]["6-block-diff_winner_score"] = winner_list[winner]
+        simulations["sims"][str(s)]["6-block-diff_winner"] = winner
+        simulations["sims"][str(s)]["6-block-diff_winner_score"] = winner_list[winner]
 
         logging.info("6-block-diff updated with cycle height " + str(cycle_height) +
                      " (after " + str(cycle_height + 1) + " cycles)")
@@ -453,9 +454,9 @@ def calc_distance(s, cycle_height):
         # The information written to JSON refers to the distance and probability before
         # the mining done on this cycle, that is just starting
         str_prob = str(attacker_success_probability(p, calculated_distance))
-        simulations["sims"][s]["cycles"][cycle_height] = {}
-        simulations["sims"][s]["cycles"][cycle_height]["distance_before_this_cycle"] = calculated_distance
-        simulations["sims"][s]["cycles"][cycle_height]["probability_before_this_cycle"] = str_prob
+        simulations["sims"][str(s)]["cycles"][str(cycle_height)] = {}
+        simulations["sims"][str(s)]["cycles"][str(cycle_height)]["distance_before_this_cycle"] = calculated_distance
+        simulations["sims"][str(s)]["cycles"][str(cycle_height)]["probability_before_this_cycle"] = str_prob
         logging.debug("Cycle height: " + str(cycle_height) +
                       ", distance before this cycle: " + str(calculated_distance))
         logging.info("Probability of " + lagging_adv + " catching up to " + leading_adv + ": " + str_prob)
@@ -466,9 +467,9 @@ def calc_distance(s, cycle_height):
 def run_simulation(s):
     sim_start_time = datetime.datetime.now()
     logging.info("Running simulation " + str(s))
-    simulations["sims"][s]["2-block-diff"] = -1
-    simulations["sims"][s]["6-block-diff"] = -1
-    cycle_height = len(simulations["sims"][s]["cycles"])
+    simulations["sims"][str(s)]["2-block-diff"] = -1
+    simulations["sims"][str(s)]["6-block-diff"] = -1
+    cycle_height = len(simulations["sims"][str(s)]["cycles"])
 
     # Simulation runs until we reach a 6-block distance from other chains
     while calc_distance(s, cycle_height) < 6:
@@ -494,11 +495,11 @@ def run_simulation(s):
             adversaries[a].pop('drawn_tickets', None)
 
     # Save the details before starting another simulation
-    simulations["sims"][s]["adversaries"] = adversaries
+    simulations["sims"][str(s)]["adversaries"] = adversaries
 
     # Save to calculate averages on calc_averages()
-    block_diff_2.append(simulations["sims"][s]["2-block-diff"])
-    block_diff_6.append(simulations["sims"][s]["6-block-diff"])
+    block_diff_2.append(simulations["sims"][str(s)]["2-block-diff"])
+    block_diff_6.append(simulations["sims"][str(s)]["6-block-diff"])
     sim_end_time = datetime.datetime.now()
     sim_duration_times.append(sim_end_time - sim_start_time)
 
@@ -534,20 +535,21 @@ def run_batch_simulations(total_simulations=1, rewind_blocks=0, rewind_adv=0):
         pprint.pprint(simulations, indent=4)
     calc_averages()
     print_summary(args.simulations)
-    save_output(args.output)
+    save_output(args.outputfile)
 
 
 def calc_averages():
     global block_diff_2, block_diff_6, simulations
     simulations["summary"] = {}
 
-    simulations["summary"]["batch_start"] = batch_start_time
-    simulations["summary"]["batch_end"] = batch_end_time
+    simulations["summary"]["batch_start"] = batch_start_time.isoformat(' ')
+    simulations["summary"]["batch_end"] = batch_end_time.isoformat(' ')
     # statistics.mean() can't be used for datetime.timedelta()
     sum_timedelta = datetime.timedelta()
     for idx, t in enumerate(sim_duration_times):
         sum_timedelta += sim_duration_times[idx]
-    simulations["summary"]["sim_mean_time"] = sum_timedelta / len(sim_duration_times)
+    avg_timedelta = sum_timedelta / len(sim_duration_times)
+    simulations["summary"]["sim_mean_time"] = avg_timedelta.total_seconds()
 
     simulations["summary"]["total"] = len(block_diff_2)                 # Total number of simulations
     simulations["summary"]["rewind_blocks"] = args.rewind_blocks        # Number of blocks to rewind
@@ -565,9 +567,9 @@ def calc_averages():
         win_counts = 0
         for s in simulations["sims"]:
             if type(s) == int:
-                if simulations["sims"][s]["6-block-diff_winner"] == a:
+                if simulations["sims"][str(s)]["6-block-diff_winner"] == a:
                     win_counts += 1
-            sum_blocks_list.append(int(simulations["sims"][s]["adversaries"][a]["sum_blocks"]))
+            sum_blocks_list.append(int(simulations["sims"][str(s)]["adversaries"][a]["sum_blocks"]))
         simulations["summary"]["total_wins"][a] = win_counts
         simulations["summary"]["perc_wins"][a] = str(round(win_counts / len(simulations["sims"]) * 100, 4)) + "%"
         simulations["summary"]["sum_blocks"][a]["average"] = round(statistics.mean(sum_blocks_list), 6)
@@ -580,11 +582,11 @@ def calc_averages():
             simulations["summary"]["pos"][a]["validated_blocks"] = list()
 
         for s in simulations["sims"]:
-            for a in simulations["sims"][s]["adversaries"]:
+            for a in simulations["sims"][str(s)]["adversaries"]:
                 simulations["summary"]["pos"][a]["invalidated_blocks"].append(
-                    simulations["sims"][s]["adversaries"][a]["invalidated_blocks"])
+                    simulations["sims"][str(s)]["adversaries"][a]["invalidated_blocks"])
                 simulations["summary"]["pos"][a]["validated_blocks"].append(
-                    simulations["sims"][s]["adversaries"][a]["validated_blocks"])
+                    simulations["sims"][str(s)]["adversaries"][a]["validated_blocks"])
 
         for a in adversaries:
             simulations["summary"]["pos"][a]["invalidated_blocks-average"] = \
@@ -617,7 +619,7 @@ def print_summary(num_sims=1):
         # After table
         print("Total time for the batch of simulations:",
               (simulations["summary"]["batch_end"] - simulations["summary"]["batch_start"]))
-        print("Mean duration of simulations:", simulations["summary"]["sim_mean_time"])
+        print("Mean duration of simulations:", simulations["summary"]["sim_mean_time"], "seconds")
         print(f'{"Average of " if int(num_sims) > 1 else ""}2-block difference for', len(block_diff_2),
               f'{"simulation" if int(num_sims) < 2 else "simulations"}:',
               simulations["summary"]["pow"]["2-block-diff-average"])
@@ -652,9 +654,8 @@ def print_summary(num_sims=1):
                   f'{adv[1]["sims_wins_p"]:>16} {adv[1]["inv_blocks"]:>23} {adv[1]["val_blocks"]:>21}')
 
         # After table
-        print("Total time for the batch of simulations:",
-              (simulations["summary"]["batch_end"] - simulations["summary"]["batch_start"]))
-        print("Average duration of simulations:", simulations["summary"]["sim_mean_time"])
+        print("Total time for the batch of simulations:", batch_end_time - batch_start_time)
+        print("Average duration of simulations:", simulations["summary"]["sim_mean_time"], "seconds")
         print(f'{"Average of " if int(num_sims) > 1 else ""}2-block difference for', len(block_diff_2),
               f'{"simulation" if int(num_sims) < 2 else "simulations"}:',
               simulations["summary"]["pow"]["2-block-diff-average"], "blocks")

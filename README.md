@@ -70,7 +70,7 @@ This script was successfully executed with:
 At least two PoW adversaries are required.
 ```
 $ python invalidationgame.py --help
-usage: invalidationgame.py [-h] [-v] [-o OUTPUT] [-w POW] [-s POS]
+usage: invalidationgame.py [-h] [-v] [-o OUTPUTFILE] [-w POW] [-s POS]
                            [-i SIMULATIONS] [-c CONFIGFILE] [--verbose]
                            [--log-level LOGLEVEL] [--log-file LOGFILE]
                            [--log-mode LOGMODE] [--output-mode OUTPUTMODE]
@@ -81,7 +81,7 @@ usage: invalidationgame.py [-h] [-v] [-o OUTPUT] [-w POW] [-s POS]
 optional arguments:
   -h, --help            show this help message and exit
   -v, --version         Prints version
-  -o OUTPUT, --output OUTPUT
+  -o OUTPUTFILE, --output OUTPUTFILE
                         Saves simulations to output file
   -w POW, --pow POW     Informs adversaries' PoW hashpower
   -s POS, --pos POS     Informs adversaries' PoS stake size
@@ -107,23 +107,23 @@ optional arguments:
   --no-erase-drawn      Doesn't erase drawn_blocks from adversary array object
   --no-create-config    Doesn't create the configuration file from default
                         values
-  --runtest             Tests basic functionality and exits
+  --runtest             Tests basic functionality and exit
 ```
 
 ### Examples
 
 ```
 Execution example 1: Pure PoW, 1 simulation, save output to file sim_pow.txt:
-$ python invalidationgame.py -w 50.01 -w 49.99 -i 1 -o sim_pow.txt
+$ python invalidationgame.py -w 50.01 -w 49.99 -o sim_pow.txt
 
-Execution example 2: PoW + PoS, 1 simulation, save output to file sim_pow_pos.txt:
-$ python invalidationgame.py -w 50 -w 50 -s 50 -s 50 -i 1 -o sim_pow_pos.txt
+Execution example 2: PoW + PoS, 1 simulation, save output to file invalidationgame.json5:
+$ python invalidationgame.py -w 50 -w 50 -s 50 -s 50
 
 Execution example 3: PoW + PoS, 3 simulations, adversary A1 trying to rewrite last two blocks, save output to file sim_pow_pos2.txt:
 $ python invalidationgame.py -w 50 -w 50 -s 50 -s 50 -i 3 --block-rewind 2 -o sim_pow_pos2.txt
 
 Execution example 4: PoW + PoS, 1 simulation, logging debug level information:
-$ python invalidationgame.py -w 50 -w 50 -s 50 -s 50 -i 1 --log-level DEBUG
+$ python invalidationgame.py -w 50 -w 50 -s 50 -s 50 --log-level DEBUG
 ```
 
 ### Processing output
