@@ -566,7 +566,7 @@ def calc_averages():
         sum_blocks_list = list()
         win_counts = 0
         for s in simulations["sims"]:
-            if type(s) == int:
+            if type(int(s)) == int:
                 if simulations["sims"][str(s)]["6-block-diff_winner"] == a:
                     win_counts += 1
             sum_blocks_list.append(int(simulations["sims"][str(s)]["adversaries"][a]["sum_blocks"]))
