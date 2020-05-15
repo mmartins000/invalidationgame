@@ -51,7 +51,7 @@ This repository contains all InvalidationGame files (one file).
 
 ## Requirements
 
-Based on Python 3, requires only default libraries: argparse, random, pprint, statistics, datetime, logging, os, stat
+Based on Python 3, requires only default libraries: argparse, random, pprint, statistics, datetime, logging, os, stat, configparser
 
 - Clone this repository (or download the single Python script)
 

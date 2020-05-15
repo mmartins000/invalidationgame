@@ -271,7 +271,7 @@ def setup_block_rewind(s, rewind_blocks, rewind_adv):
         adversaries[a]["drawn_block_hashes"].append(block_hash)
 
         # Add fake blocks to the "chain" node
-        this_height = str(len(adversaries[a]["chain"]))
+        this_height = str(len(adversaries[a]["chain"])).zfill(3)
         adversaries[a]["chain"][this_height] = {}
         if not args.pos:
             # Pure PoW: Append fake block to the "chain"
@@ -301,31 +301,32 @@ def mine_block(s, cycle_height):
         # This choice affects the way block hashes are drawn here
         draw_block_hash = random.choice(range(block_hash_space))
         # The dict is crated here to avoid KeyError when calc_distance() returns 0
+        this_cycle_height = str(cycle_height).zfill(3)
         if cycle_height not in simulations["sims"][str(s)]["cycles"]:
-            simulations["sims"][str(s)]["cycles"][str(cycle_height)] = {}
-        simulations["sims"][str(s)]["cycles"][str(cycle_height)]["drawn_block_hash"] = draw_block_hash
-        simulations["sims"][str(s)]["cycles"][str(cycle_height)]["pow_winners"] = list()
-        logging.info("Cycle height: " + str(cycle_height) + ", drawn block hash: " + str(draw_block_hash))
+            simulations["sims"][str(s)]["cycles"][this_cycle_height] = {}
+        simulations["sims"][str(s)]["cycles"][this_cycle_height]["drawn_block_hash"] = draw_block_hash
+        simulations["sims"][str(s)]["cycles"][this_cycle_height]["pow_winners"] = list()
+        logging.info("Cycle height: " + this_cycle_height + ", drawn block hash: " + str(draw_block_hash))
         for a in adversaries:
             if draw_block_hash in adversaries[a]["prob_block_hashes"]:
                 pow_winner = True
                 adversaries[a]["drawn_block_hashes"].append(str(draw_block_hash))
-                simulations["sims"][str(s)]["cycles"][str(cycle_height)]["pow_winners"].append(a)
-                logging.info("Cycle height: " + str(cycle_height) + ", PoW winner: " + a)
+                simulations["sims"][str(s)]["cycles"][this_cycle_height]["pow_winners"].append(a)
+                logging.info("Cycle height: " + this_cycle_height + ", PoW winner: " + a)
                 if not args.pos:
                     # pow_winner: Append block to the "chain"
-                    this_height = str(len(adversaries[a]["chain"]))
+                    this_height = str(len(adversaries[a]["chain"])).zfill(3)
                     adversaries[a]["chain"][this_height] = {}
                     adversaries[a]["chain"][this_height].update({"block_hash": draw_block_hash})
 
         if not pow_winner:
             # This cycles are going to be ignored as if miners took more than average time to mine a block
-            logging.info("No PoW winner for height " + str(cycle_height) + "; next draw")
+            logging.info("No PoW winner for height " + this_cycle_height + "; next draw")
 
         else:   # If already selected at least one adversary as PoW miner; if not, will loop again
             # PoS mining
             if args.pos:  # If not, this simulation is a pure PoW and this code block can be skipped
-                simulations["sims"][str(s)]["cycles"][str(cycle_height)]["pos_winners"] = list()
+                simulations["sims"][str(s)]["cycles"][this_cycle_height]["pos_winners"] = list()
 
                 # Draws how many tickets will be drawn for this block based on historical proportions
                 # defined in the beginning of this file
@@ -342,16 +343,16 @@ def mine_block(s, cycle_height):
                     adversaries[a]["drawn_tickets"] = [t for t in drawn_tickets if t in adversaries[a]["prob_tickets"]]
                     total_tickets = len(adversaries[a]["drawn_tickets"])
 
-                    if a in simulations["sims"][str(s)]["cycles"][str(cycle_height)]["pow_winners"]:
+                    if a in simulations["sims"][str(s)]["cycles"][this_cycle_height]["pow_winners"]:
                         # adversary already won PoW
                         if total_tickets > pos_allowed_drawn_tickets // 2:
                             pos_winner = True
-                            simulations["sims"][str(s)]["cycles"][str(cycle_height)]["pos_winners"].append(a)
+                            simulations["sims"][str(s)]["cycles"][this_cycle_height]["pos_winners"].append(a)
                             adversaries[a]["validated_blocks"] += 1
                             logging.debug("Tickets for adversary " + a + ": " +
                                           str(total_tickets) + "; drawn tickets: " +
                                           str(adversaries[a]["drawn_tickets"]))
-                            logging.info("Cycle height: " + str(cycle_height) + ", PoS winner: " + a)
+                            logging.info("Cycle height: " + this_cycle_height + ", PoS winner: " + a)
 
                             # pow_winner and pos_winner: Append block to the "chain" after PoS validation
                             this_height = str(len(adversaries[a]["chain"]))
@@ -373,7 +374,7 @@ def mine_block(s, cycle_height):
                     # If the adversary didn't have the necessary drawn tickets to validate his own blocks,
                     # we assume the block will be invalidated by the honest adversaries
                     pow_winner = False
-                    logging.info("PoS and PoW winner don't match for block height " + str(cycle_height) + "; next draw")
+                    logging.info("PoS and PoW winner don't match for block height " + this_cycle_height + "; next draw")
 
 
 def calc_distance(s, cycle_height):
@@ -397,6 +398,7 @@ def calc_distance(s, cycle_height):
             lagging_adv = a
         elif len(adversaries[a]["drawn_block_hashes"]) == leading_height:
             # Found the (last) lagging adversary to use later
+            # If lagging_height == leading_height, this block won't run, leaving leading_adv == ""
             leading_adv = a
 
     # Calculate the maximum distance between any two adversaries
@@ -406,6 +408,7 @@ def calc_distance(s, cycle_height):
     except ValueError:
         calculated_distance = 0
 
+    this_cycle_height = str(cycle_height).zfill(3)
     if calculated_distance == 2 and simulations["sims"][str(s)]["2-block-diff"] == -1:
         # Adding 1 because the cycle height starts in 0 and I want to know after how many cycles
         simulations["sims"][str(s)]["2-block-diff"] = cycle_height + 1    # first time reached 2-block distance
@@ -419,7 +422,7 @@ def calc_distance(s, cycle_height):
         simulations["sims"][str(s)]["2-block-diff_winner"] = winner
         simulations["sims"][str(s)]["2-block-diff_winner_score"] = winner_list[winner]
 
-        logging.info("2-block-diff updated with cycle height " + str(cycle_height) +
+        logging.info("2-block-diff updated with cycle height " + this_cycle_height +
                      " (after " + str(cycle_height + 1) + " cycles)")
 
     elif calculated_distance == 6:
@@ -435,7 +438,7 @@ def calc_distance(s, cycle_height):
         simulations["sims"][str(s)]["6-block-diff_winner"] = winner
         simulations["sims"][str(s)]["6-block-diff_winner_score"] = winner_list[winner]
 
-        logging.info("6-block-diff updated with cycle height " + str(cycle_height) +
+        logging.info("6-block-diff updated with cycle height " + this_cycle_height +
                      " (after " + str(cycle_height + 1) + " cycles)")
         logging.info("End of simulation reached with 6 blocks of difference")
 
@@ -454,12 +457,16 @@ def calc_distance(s, cycle_height):
         # The information written to JSON refers to the distance and probability before
         # the mining done on this cycle, that is just starting
         str_prob = str(attacker_success_probability(p, calculated_distance))
-        simulations["sims"][str(s)]["cycles"][str(cycle_height)] = {}
-        simulations["sims"][str(s)]["cycles"][str(cycle_height)]["distance_before_this_cycle"] = calculated_distance
-        simulations["sims"][str(s)]["cycles"][str(cycle_height)]["probability_before_this_cycle"] = str_prob
-        logging.debug("Cycle height: " + str(cycle_height) +
+        this_cycle_height = str(cycle_height).zfill(3)
+        simulations["sims"][str(s)]["cycles"][this_cycle_height] = {}
+        simulations["sims"][str(s)]["cycles"][this_cycle_height]["distance_before_this_cycle"] = calculated_distance
+        simulations["sims"][str(s)]["cycles"][this_cycle_height]["probability_before_this_cycle"] = str_prob
+        logging.debug("Cycle height: " + this_cycle_height +
                       ", distance before this cycle: " + str(calculated_distance))
-        logging.info("Probability of " + lagging_adv + " catching up to " + leading_adv + ": " + str_prob)
+        if leading_adv == "":   # If the first part wasn't run, they are at the same height
+            logging.info("Probability of catching up is " + str_prob + " because their heights are the same")
+        else:
+            logging.info("Probability of " + lagging_adv + " catching up to " + leading_adv + ": " + str_prob)
 
     return calculated_distance
 
@@ -617,8 +624,8 @@ def print_summary(num_sims=1):
             print(f'{adv[0]:9} {adv[1]["hpow"]:>10} {adv[1]["sims_wins_n"]:>16} {adv[1]["sims_wins_p"]:>16}')
 
         # After table
-        print("Total time for the batch of simulations:",
-              (simulations["summary"]["batch_end"] - simulations["summary"]["batch_start"]))
+        batch_duration = batch_end_time - batch_start_time
+        print("Total time for the batch of simulations:", batch_duration. total_seconds(), "seconds")
         print("Mean duration of simulations:", simulations["summary"]["sim_mean_time"], "seconds")
         print(f'{"Average of " if int(num_sims) > 1 else ""}2-block difference for', len(block_diff_2),
               f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
@@ -753,7 +760,7 @@ def main():
 if __name__ == "__main__":
     args.version and print_version()
     config_logging(args.logfile, args.logmode, args.loglevel)
-    sanity_check(args.pow, args.pos, args.rewind_adv)
+    args.runtest or sanity_check(args.pow, args.pos, args.rewind_adv)
     read_config(args.configfile)
 
     main()
