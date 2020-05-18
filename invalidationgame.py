@@ -317,7 +317,8 @@ def mine_block(s, cycle_height):
                     # pow_winner: Append block to the "chain"
                     this_height = str(len(adversaries[a]["chain"])).zfill(3)
                     adversaries[a]["chain"][this_height] = {}
-                    adversaries[a]["chain"][this_height].update({"block_hash": draw_block_hash})
+                    adversaries[a]["chain"][this_height].update({"block_hash": draw_block_hash,
+                                                                 "from_cycle": this_cycle_height})
 
         if not pow_winner:
             # This cycles are going to be ignored as if miners took more than average time to mine a block
@@ -359,6 +360,7 @@ def mine_block(s, cycle_height):
                             adversaries[a]["chain"][this_height] = {}
                             adversaries[a]["chain"][this_height].update(
                                 {"block_hash": draw_block_hash,
+                                 "from_cycle": this_cycle_height,
                                  "online_tickets": pos_allowed_drawn_tickets,
                                  "owned_tickets": adversaries[a]["drawn_tickets"]})
                         else:
@@ -595,6 +597,7 @@ def calc_averages():
                 simulations["summary"]["pos"][a]["validated_blocks"].append(
                     simulations["sims"][str(s)]["adversaries"][a]["validated_blocks"])
 
+        # This is the correct position for this code block
         for a in adversaries:
             simulations["summary"]["pos"][a]["invalidated_blocks-average"] = \
                 round(statistics.mean(simulations["summary"]["pos"][a]["invalidated_blocks"]), 6)
@@ -626,7 +629,7 @@ def print_summary(num_sims=1):
         # After table
         batch_duration = batch_end_time - batch_start_time
         print("Total time for the batch of simulations:", batch_duration. total_seconds(), "seconds")
-        print("Mean duration of simulations:", simulations["summary"]["sim_mean_time"], "seconds")
+        print("Average duration of simulations:", simulations["summary"]["sim_mean_time"], "seconds")
         print(f'{"Average of " if int(num_sims) > 1 else ""}2-block difference for', len(block_diff_2),
               f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
               simulations["summary"]["pow"]["2-block-diff-average"])
@@ -679,9 +682,17 @@ def print_summary(num_sims=1):
         for a in adversaries:
             if (simulations["summary"]["sum_blocks"][a]["average"] > 0) and \
                     (int(table[a]["sims_wins_n"]) < max(loss_list)):
-                print("Assuming that", a, "won\'t fork the blockchain, the attack cost",
-                      simulations["summary"]["sum_blocks"][a]["average"], "PoW block rewards, in average,",
-                      "due to PoS invalidation of bad PoW mined blocks.")
+                if args.pos:
+                    print("Assuming that", a, "won\'t fork the blockchain, the attack cost",
+                          simulations["summary"]["sum_blocks"][a]["average"], "PoW block reward, on average,",
+                          "due to PoS invalidation of bad PoW mined blocks.")
+                else:
+                    print("Assuming that", a, "won\'t fork the blockchain, the attack cost",
+                          simulations["summary"]["sum_blocks"][a]["average"],
+                          "PoW block reward, on average.")
+            elif simulations["summary"]["sum_blocks"][a]["average"] == 0:
+                print("Assuming that", a, "won\'t try to fork the blockchain,", a, "won't forgo any PoW reward",
+                      "because no block was successfully mined.")
     else:
         # We have a draw; print about all of them
         print("Assuming that no adversary will fork the blockchain:")
@@ -689,7 +700,7 @@ def print_summary(num_sims=1):
             if (simulations["summary"]["sum_blocks"][a]["average"] > 0) and \
                     (int(table[a]["sims_wins_n"]) <= max(loss_list)):
                 print(a, "lost the equivalent of",
-                      simulations["summary"]["sum_blocks"][a]["average"], "PoW block rewards, in average")
+                      simulations["summary"]["sum_blocks"][a]["average"], "PoW block rewards, on average")
 
 
 def save_output(output_file):
