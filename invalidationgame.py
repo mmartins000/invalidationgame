@@ -129,6 +129,8 @@ parser.add_argument("--rewind-blocks", dest='rewind_blocks', default=0,
 parser.add_argument("--rewind-adv", dest='rewind_adv', default=0,
                     help="Which adversary will be ahead in number of blocks (advantage). Default: 0",
                     type=restricted_int)
+parser.add_argument("--no-output-json", dest='nooutputjson', action='store_true',
+                    help="Doesn't output the simulations to a JSON file at the end")
 parser.add_argument("--no-erase-prob", dest='noeraseprob', action='store_true',
                     help="Doesn't erase prob_block_hashes from adversary array object")
 parser.add_argument("--no-erase-drawn", dest='noerasedrawn', action='store_true',
@@ -452,13 +454,16 @@ def calc_distance(s, cycle_height):
     # Calculate probabilities of catching up: second part
     # Probability of success for the adversary that is lagging behind to catch up with leader
     if lagging_adv != "":
-        p = adversaries[lagging_adv]["hashpower"] / 100
+        q = adversaries[lagging_adv]["hashpower"] / 100
         if args.pos:
-            p *= (adversaries[lagging_adv]["stakesize"] / 100)
+            # q *= (adversaries[lagging_adv]["stakesize"] / 100)
+            q_hash = adversaries[lagging_adv]["hashpower"] / 100
+            q_stake = adversaries[lagging_adv]["stakesize"] / 100
+            q = pow(q_hash * q_stake, 1 - q_stake)
 
         # The information written to JSON refers to the distance and probability before
         # the mining done on this cycle, that is just starting
-        str_prob = str(attacker_success_probability(p, calculated_distance))
+        str_prob = str(attacker_success_probability(q, calculated_distance))
         this_cycle_height = str(cycle_height).zfill(3)
         simulations["sims"][str(s)]["cycles"][this_cycle_height] = {}
         simulations["sims"][str(s)]["cycles"][this_cycle_height]["distance_before_this_cycle"] = calculated_distance
@@ -630,13 +635,24 @@ def print_summary(num_sims=1):
         batch_duration = batch_end_time - batch_start_time
         print("Total time for the batch of simulations:", batch_duration. total_seconds(), "seconds")
         print("Average duration of simulations:", simulations["summary"]["sim_mean_time"], "seconds")
-        print(f'{"Average of " if int(num_sims) > 1 else ""}2-block difference for', len(block_diff_2),
+        print(f'{"Average of " if int(num_sims) > 1 else ""}2-block advantage for', len(block_diff_2),
               f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
               simulations["summary"]["pow"]["2-block-diff-average"])
-        print(f'{"Average of " if int(num_sims) > 1 else ""}6-block difference for', len(block_diff_6),
+        print(f'{"Average of " if int(num_sims) > 1 else ""}6-block advantage for', len(block_diff_6),
               f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
               simulations["summary"]["pow"]["6-block-diff-average"])
 
+        # Attacker success probability:
+        for a in adversaries:
+            q = float(adversaries[a]["hashpower"]) / 100
+            if q < 0.50:
+                print("Attacker probability of catching up for " + a + ": (z=number of blocks behind)")
+                str_zp = ""
+                for z in range(1, 7):
+                    str_zp += "z=" + str(z) + ", p=" + \
+                              str(round(attacker_success_probability(q, z), 6)) + \
+                              "; "
+                print(str_zp)
     else:
         print("\nPoW + PoS simulation:")
         print("_____________________")
@@ -666,12 +682,26 @@ def print_summary(num_sims=1):
         # After table
         print("Total time for the batch of simulations:", batch_end_time - batch_start_time)
         print("Average duration of simulations:", simulations["summary"]["sim_mean_time"], "seconds")
-        print(f'{"Average of " if int(num_sims) > 1 else ""}2-block difference for', len(block_diff_2),
+        print(f'{"Average of " if int(num_sims) > 1 else ""}2-block advantage for', len(block_diff_2),
               f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
               simulations["summary"]["pow"]["2-block-diff-average"], "blocks")
-        print(f'{"Average of " if int(num_sims) > 1 else ""}6-block difference for', len(block_diff_6),
+        print(f'{"Average of " if int(num_sims) > 1 else ""}6-block advantage for', len(block_diff_6),
               f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
               simulations["summary"]["pow"]["6-block-diff-average"], "blocks")
+
+        # Attacker success probability:
+        for a in adversaries:
+            q_hash = adversaries[a]["hashpower"] / 100
+            q_stake = adversaries[a]["stakesize"] / 100
+            q = pow(q_hash * q_stake, 1 - q_stake)
+            if q <= 0.50:
+                print("Attacker probability of catching up for " + a + ": (z=number of blocks behind)")
+                str_zp = ""
+                for z in range(1, 7):
+                    str_zp += "z=" + str(z) + ", p=" + \
+                              str(round(attacker_success_probability(q, z), 6)) + \
+                              "; "
+                print(str_zp)
 
     # Losses amount
     loss_list = list()
@@ -704,7 +734,7 @@ def print_summary(num_sims=1):
 
 
 def save_output(output_file):
-    if output_file:
+    if output_file and not args.nooutputjson:
         try:
             with open(output_file, args.outputmode) as ofh:
                 pprint.pprint(simulations, ofh)

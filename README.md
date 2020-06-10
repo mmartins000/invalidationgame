@@ -51,7 +51,7 @@ This repository contains all InvalidationGame files (one file).
 
 ## Requirements
 
-Based on Python 3, requires only default libraries: argparse, random, pprint, statistics, datetime, logging, os, stat, configparser
+Based on Python 3, requires only default libraries: argparse, random, pprint, statistics, datetime, logging, os, stat, configparser. Won't work with Python 2.
 
 - Clone this repository (or download the single Python script)
 
@@ -60,8 +60,9 @@ Based on Python 3, requires only default libraries: argparse, random, pprint, st
 ### Tests
 
 This script was successfully executed with:
-- macOS Catalina 10.15.3
-- Python 3.7.4
+- macOS Catalina 10.15.3, 10.15.4, 10.15.5
+- Amazon AMI v2 Linux (after installation of Python 3)
+- Python 3.7.4 and 3.7.6
 
 ### Command line options
 
@@ -73,8 +74,9 @@ usage: invalidationgame.py [-h] [-v] [-o OUTPUTFILE] [-w POW] [-s POS]
                            [--log-level LOGLEVEL] [--log-file LOGFILE]
                            [--log-mode LOGMODE] [--output-mode OUTPUTMODE]
                            [--rewind-blocks REWIND_BLOCKS]
-                           [--rewind-adv REWIND_ADV] [--no-erase-prob]
-                           [--no-erase-drawn] [--no-create-config] [--runtest]
+                           [--rewind-adv REWIND_ADV] [--no-output-json]
+                           [--no-erase-prob] [--no-erase-drawn]
+                           [--no-create-config] [--runtest]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -100,12 +102,14 @@ optional arguments:
   --rewind-adv REWIND_ADV
                         Which adversary will be ahead in number of blocks
                         (advantage). Default: 0
+  --no-output-json      Doesn't output the simulations to a JSON file at the
+                        end
   --no-erase-prob       Doesn't erase prob_block_hashes from adversary array
                         object
   --no-erase-drawn      Doesn't erase drawn_blocks from adversary array object
   --no-create-config    Doesn't create the configuration file from default
                         values
-  --runtest             Tests basic functionality and exit
+  --runtest             Tests basic functionality and exits
 ```
 
 ### Examples
