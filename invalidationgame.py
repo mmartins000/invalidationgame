@@ -1,6 +1,6 @@
 #!/usr/local/bin/python3
 
-# InvalidationGame v0.1
+# InvalidationGame v0.1.2
 # Author: Marcelo Martins (stakey.club)
 # Source: https://github.com/mmartins000/invalidationgame
 # Simulates a (double-spending) blockchain attack
@@ -41,7 +41,7 @@ import configparser
 
 __author__ = "Marcelo Martins (stakey.club)"
 __license__ = "GNU GPL 3"
-__version__ = "0.1"
+__version__ = "0.1.2"
 
 simulations = {}
 adversaries = {}
@@ -54,9 +54,9 @@ batch_end_time = datetime.datetime.now()
 block_hash_space = 10000             # 10000 (instead of 100) allows for two floating point hashpower number
 pos_avg_ticket_pool_size = 40960
 # Number of blocks with 3 votes: 5617; 4 votes: 22561; 5 votes: 401716; Total blocks: 429894 (100%)
-pos_blocks_with_5votes = 401716      # Numbers from Decred blockchain
-pos_blocks_with_4votes = 22561       # Extracted from dcrdata PostgreSQL database
-pos_blocks_with_3votes = 5617        # from 08.02.16 to 08.02.20
+pos_blocks_with_5votes = 391045      # Numbers from Decred blockchain
+pos_blocks_with_4votes = 21881       # Extracted from dcrdata PostgreSQL database
+pos_blocks_with_3votes = 5526        # from 08.02.16 to 08.02.20
 pos_blocks_with_votes = pos_blocks_with_5votes + pos_blocks_with_4votes + pos_blocks_with_3votes
 pos_prop_blocks_5votes = pos_blocks_with_5votes / pos_blocks_with_votes
 pos_prop_blocks_4votes = pos_blocks_with_4votes / pos_blocks_with_votes
@@ -453,17 +453,14 @@ def calc_distance(s, cycle_height):
 
     # Calculate probabilities of catching up: second part
     # Probability of success for the adversary that is lagging behind to catch up with leader
+    str_prob = "X"
     if lagging_adv != "":
-        q = adversaries[lagging_adv]["hashpower"] / 100
-        if args.pos:
-            # q *= (adversaries[lagging_adv]["stakesize"] / 100)
-            q_hash = adversaries[lagging_adv]["hashpower"] / 100
-            q_stake = adversaries[lagging_adv]["stakesize"] / 100
-            q = pow(q_hash * q_stake, 1 - q_stake)
+        if not args.pos:
+            q = adversaries[lagging_adv]["hashpower"] / 100
+            # The information written to JSON refers to the distance and probability before
+            # the mining done on this cycle, that is just starting
+            str_prob = str(attacker_success_probability(q, calculated_distance))
 
-        # The information written to JSON refers to the distance and probability before
-        # the mining done on this cycle, that is just starting
-        str_prob = str(attacker_success_probability(q, calculated_distance))
         this_cycle_height = str(cycle_height).zfill(3)
         simulations["sims"][str(s)]["cycles"][this_cycle_height] = {}
         simulations["sims"][str(s)]["cycles"][this_cycle_height]["distance_before_this_cycle"] = calculated_distance
@@ -507,6 +504,13 @@ def run_simulation(s):
         if not args.noerasedrawn:
             adversaries[a].pop('drawn_block_hashes', None)
             adversaries[a].pop('drawn_tickets', None)
+
+    # If we won't save JSON output, we avoid increasing memory footprint
+    # and discard adversary chains and cycles
+    if args.nooutputjson:
+        for a in adversaries:
+            adversaries[a].pop('chain', None)
+            adversaries[a].pop('cycles', None)
 
     # Save the details before starting another simulation
     simulations["sims"][str(s)]["adversaries"] = adversaries
@@ -689,19 +693,7 @@ def print_summary(num_sims=1):
               f'{"simulation" if int(num_sims) < 2 else "simulations"} reached in:',
               simulations["summary"]["pow"]["6-block-diff-average"], "blocks")
 
-        # Attacker success probability:
-        for a in adversaries:
-            q_hash = adversaries[a]["hashpower"] / 100
-            q_stake = adversaries[a]["stakesize"] / 100
-            q = pow(q_hash * q_stake, 1 - q_stake)
-            if q <= 0.50:
-                print("Attacker probability of catching up for " + a + ": (z=number of blocks behind)")
-                str_zp = ""
-                for z in range(1, 7):
-                    str_zp += "z=" + str(z) + ", p=" + \
-                              str(round(attacker_success_probability(q, z), 6)) + \
-                              "; "
-                print(str_zp)
+        # Attacker success probability won't be calculated for PoW + PoS
 
     # Losses amount
     loss_list = list()
